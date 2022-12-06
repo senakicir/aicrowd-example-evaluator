@@ -1,0 +1,7 @@
+challenge:
+  name: Introduction to Machine Learning - H36M
+  template: simple-evaluator
+  authors:
+  - name: Sena Kiciroglu
+    email: sena.kiciroglu@epfl.ch
+  version: '0.1'

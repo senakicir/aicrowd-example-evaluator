@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import torch
 
 class AIcrowdEvaluator:
   def __init__(self, ground_truth_path, **kwargs):
@@ -21,7 +22,8 @@ class AIcrowdEvaluator:
     aicrowd_submission_id = client_payload["aicrowd_submission_id"]
     aicrowd_participant_uid = client_payload["aicrowd_participant_id"]
     
-    submission = pd.read_csv(submission_file_path)
+    submission = torch.load(submission_file_path).numpy()
+    ground_truth = np.load(self.ground_truth_path)
     # Or your preferred way to read your submission
 
     """
@@ -35,29 +37,35 @@ class AIcrowdEvaluator:
      You are encouraged to add as many validations as possible
      to provide meaningful feedback to your users
     """
+
+    def accuracy_fn(pred_labels, gt_labels):
+      return np.mean(pred_labels == gt_labels)*100
+
+    def macrof1_fn(pred_labels,gt_labels):
+      class_ids = np.unique(gt_labels)
+      macrof1 = 0
+      for val in class_ids:
+          predpos = (pred_labels == val)
+          gtpos = (gt_labels==val)
+          
+          tp = sum(predpos*gtpos)
+          fp = sum(predpos*~gtpos)
+          fn = sum(~predpos*gtpos)
+          if tp == 0:
+              continue
+          else:
+              precision = tp/(tp+fp)
+              recall = tp/(tp+fn)
+          macrof1 += 2*(precision*recall)/(precision+recall)
+      return macrof1/len(class_ids)
+
     _result_object = {
-        "score": np.random.random(),
-        "score_secondary" : np.random.random()
+        "accuracy": accuracy_fn(submission, ground_truth),
+        "F1_score" : macrof1_fn(submission, ground_truth)
     }
     
-    media_dir = '/tmp/'
-
-    """
-    To add media to the result object such that it shows on the challenge leaderboard:
-    - Save the file at '/tmp/<filename>'
-    - Add the path of the media to the result object:
-        For images, add file path to _result_object["media_image_path"]
-        For videos, add file path to _result_object["media_video_path"] and
-                    add file path to _result_object["media_video_thumb_path"] (for small video going on the leaderboard)
-    
-    For example, 
-    _result_object["media_image_path"] = '/tmp/submission-image.png'
-    _result_object["media_video_path"] = '/tmp/submission-video.mp4'
-    _result_object["media_video_thumb_path"] = '/tmp/submission-video-small.mp4'
-    """
-
-    assert "score" in _result_object
-    assert "score_secondary" in _result_object
+    assert "accuracy" in _result_object
+    assert "F1_score" in _result_object
 
     return _result_object
 
@@ -65,9 +73,9 @@ if __name__ == "__main__":
     # Lets assume the the ground_truth is a CSV file
     # and is present at data/ground_truth.csv
     # and a sample submission is present at data/sample_submission.csv
-    ground_truth_path = "data/ground_truth.csv"
+    ground_truth_path = "/Users/kicirogl/workspace/intro-ml-c233/archive/project/h36m_data/h36m_test2_labels.npy"
     _client_payload = {}
-    _client_payload["submission_file_path"] = "data/sample_submission.csv"
+    _client_payload["submission_file_path"] =  "/Users/kicirogl/workspace/intro-ml-c233/archive/project/project_with_solutions/results_class.txt"
     _client_payload["aicrowd_submission_id"] = 1234
     _client_payload["aicrowd_participant_id"] = 1234
     
